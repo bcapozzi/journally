@@ -82,6 +82,7 @@ type alias JournalEntry =
 type alias Model =
     { entries : List JournalEntry
     , activeEntry : Maybe JournalEntry
+    , currentTimeZone : Time.Zone
     }
 
 
@@ -91,23 +92,27 @@ type Msg
     | AddNewEntry Time.Posix
     | Change String
     | SaveEntry
+    | AdjustTimeZone Time.Zone
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     --init : Model
     --init =
-    ( Model [] Nothing, Cmd.none )
+    ( Model [] Nothing Time.utc, Task.perform AdjustTimeZone Time.here )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        AdjustTimeZone zone ->
+            ( { model | currentTimeZone = zone }, Cmd.none )
+
         AddEntry ->
             ( model, Task.perform AddNewEntry Time.now )
 
         AddNewEntry time ->
-            ( { model | activeEntry = Just (JournalEntry Time.utc time "") }, Cmd.none )
+            ( { model | activeEntry = Just (JournalEntry model.currentTimeZone time "") }, Cmd.none )
 
         SaveEntry ->
             case model.activeEntry of
