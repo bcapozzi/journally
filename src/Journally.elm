@@ -14,10 +14,11 @@ module Journally exposing (..)
 --import Html.Attributes exposing (cols, placeholder, rows, value)
 
 import Browser
+import Browser.Dom
 import Css exposing (..)
 import Html
 import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (cols, css, href, placeholder, rows, src, value)
+import Html.Styled.Attributes exposing (cols, css, href, id, placeholder, rows, src, value)
 import Html.Styled.Events exposing (onClick, onInput)
 import Task
 import Time
@@ -112,7 +113,7 @@ update msg model =
             ( model, Task.perform AddNewEntry Time.now )
 
         AddNewEntry time ->
-            ( { model | activeEntry = Just (JournalEntry model.currentTimeZone time "") }, Cmd.none )
+            ( { model | activeEntry = Just (JournalEntry model.currentTimeZone time "") }, focusActiveEntry )
 
         SaveEntry ->
             case model.activeEntry of
@@ -162,9 +163,14 @@ viewActiveEntry model =
         Just anEntry ->
             Html.Styled.div [ css [ textAlign center ] ]
                 [ Html.Styled.div [] [ text (toDateTimeString anEntry.timeZone anEntry.time) ]
-                , Html.Styled.textarea [ cols 80, rows 10, placeholder "Enter entry here", value anEntry.content, onInput Change ] []
+                , Html.Styled.textarea [ cols 80, rows 10, placeholder "Enter entry here", value anEntry.content, onInput Change, id "active-entry-field" ] []
                 , Html.Styled.div [] [ button [ onClick SaveEntry ] [ text "Save" ] ]
                 ]
+
+
+focusActiveEntry : Cmd Msg
+focusActiveEntry =
+    Task.attempt (\_ -> DoNothing) (Browser.Dom.focus "active-entry-field")
 
 
 viewEntries : Model -> Html Msg
