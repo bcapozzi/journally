@@ -144,12 +144,12 @@ view model =
     Html.Styled.div []
         [ Html.Styled.h1 [ css [ textAlign center ] ]
             [ text "Journally" ]
-        , viewEntries model
-        , viewActiveEntry model
-        , Html.Styled.br [] []
         , Html.Styled.div [ css [ textAlign center ] ]
             [ Html.Styled.button [ onClick AddEntry ] [ text "+" ]
             ]
+        , Html.Styled.br [] []
+        , viewActiveEntry model
+        , viewEntries model
         ]
 
 
@@ -178,19 +178,13 @@ viewEntries model =
 
 createEntry entry =
     let
-        hour =
-            toHourString entry.timeZone entry.time
-
-        minute =
-            toMinuteString entry.timeZone entry.time
-
-        second =
-            toSecondString entry.timeZone entry.time
+        timeString =
+            toDateTimeString entry.timeZone entry.time
     in
     Html.Styled.div [ css [ textAlign center ] ]
         [ --[ div [] [ text entry.timeZone ]
           --, div [] [ text entry.time ]
-          Html.Styled.div [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]
+          Html.Styled.div [] [ text timeString ]
         , Html.Styled.div [] [ text entry.content ]
         ]
 
