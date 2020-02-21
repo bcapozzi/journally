@@ -10,16 +10,13 @@ module Journally exposing (..)
 --import Html exposing (Attribute, Html, br, button, div, h1, h2, header, input, text, textarea)
 --import Html.Attributes exposing (..)
 --import Css.Global exposing (..)
---import Html.Events exposing (onClick, onInput)
 --import Html.Attributes exposing (cols, placeholder, rows, value)
 
 import Browser
 import Browser.Dom
-import Css exposing (..)
-import Html
-import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (cols, css, href, id, placeholder, rows, src, value)
-import Html.Styled.Events exposing (onClick, onInput)
+import Html exposing (Html, br, button, div, h1, text, textarea)
+import Html.Attributes exposing (cols, href, id, placeholder, rows, src, value)
+import Html.Events exposing (onClick, onInput)
 import Task
 import Time
 
@@ -62,7 +59,7 @@ main : Program () Model Msg
 main =
     Browser.element
         { init = init
-        , view = view >> toUnstyled
+        , view = view
         , subscriptions = subscriptions
         , update = update
         }
@@ -142,13 +139,13 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.Styled.div []
-        [ Html.Styled.h1 [ css [ textAlign center ] ]
+    div []
+        [ h1 []
             [ text "Journally" ]
-        , Html.Styled.div [ css [ textAlign center ] ]
-            [ Html.Styled.button [ onClick AddEntry ] [ text "+" ]
+        , div []
+            [ button [ onClick AddEntry ] [ text "+" ]
             ]
-        , Html.Styled.br [] []
+        , br [] []
         , viewActiveEntry model
         , viewEntries model
         ]
@@ -158,13 +155,13 @@ viewActiveEntry : Model -> Html Msg
 viewActiveEntry model =
     case model.activeEntry of
         Nothing ->
-            Html.Styled.div [] []
+            div [] []
 
         Just anEntry ->
-            Html.Styled.div [ css [ textAlign center ] ]
-                [ Html.Styled.div [] [ text (toDateTimeString anEntry.timeZone anEntry.time) ]
-                , Html.Styled.textarea [ cols 80, rows 10, placeholder "Enter entry here", value anEntry.content, onInput Change, id "active-entry-field" ] []
-                , Html.Styled.div [] [ button [ onClick SaveEntry ] [ text "Save" ] ]
+            div []
+                [ div [] [ text (toDateTimeString anEntry.timeZone anEntry.time) ]
+                , textarea [ cols 80, rows 10, placeholder "Enter entry here", value anEntry.content, onInput Change, id "active-entry-field" ] []
+                , div [] [ button [ onClick SaveEntry ] [ text "Save" ] ]
                 ]
 
 
@@ -179,7 +176,7 @@ viewEntries model =
         entryDivs =
             List.map createEntry model.entries
     in
-    Html.Styled.div [] entryDivs
+    div [] entryDivs
 
 
 createEntry entry =
@@ -187,11 +184,11 @@ createEntry entry =
         timeString =
             toDateTimeString entry.timeZone entry.time
     in
-    Html.Styled.div [ css [ textAlign center ] ]
+    div []
         [ --[ div [] [ text entry.timeZone ]
           --, div [] [ text entry.time ]
-          Html.Styled.div [] [ text timeString ]
-        , Html.Styled.div [] [ text entry.content ]
+          div [] [ text timeString ]
+        , div [] [ text entry.content ]
         ]
 
 
