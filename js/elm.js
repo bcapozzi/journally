@@ -5193,9 +5193,9 @@ var $elm$browser$Browser$document = _Browser_document;
 var $author$project$Journally$AdjustTimeZone = function (a) {
 	return {$: 'AdjustTimeZone', a: a};
 };
-var $author$project$Journally$Model = F3(
-	function (entries, activeEntry, currentTimeZone) {
-		return {activeEntry: activeEntry, currentTimeZone: currentTimeZone, entries: entries};
+var $author$project$Journally$Model = F4(
+	function (entries, activeEntry, currentTimeZone, activeTimestamp) {
+		return {activeEntry: activeEntry, activeTimestamp: activeTimestamp, currentTimeZone: currentTimeZone, entries: entries};
 	});
 var $elm$time$Time$Name = function (a) {
 	return {$: 'Name', a: a};
@@ -5212,7 +5212,7 @@ var $elm$time$Time$here = _Time_here(_Utils_Tuple0);
 var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
 var $author$project$Journally$init = function (_v0) {
 	return _Utils_Tuple2(
-		A3($author$project$Journally$Model, _List_Nil, $elm$core$Maybe$Nothing, $elm$time$Time$utc),
+		A4($author$project$Journally$Model, _List_Nil, $elm$core$Maybe$Nothing, $elm$time$Time$utc, $elm$core$Maybe$Nothing),
 		A2($elm$core$Task$perform, $author$project$Journally$AdjustTimeZone, $elm$time$Time$here));
 };
 var $author$project$Journally$Load = function (a) {
@@ -5226,18 +5226,21 @@ var $author$project$Journally$subscriptions = function (model) {
 var $author$project$Journally$AddNewEntry = function (a) {
 	return {$: 'AddNewEntry', a: a};
 };
-var $author$project$Journally$JournalEntry = F2(
-	function (timestamp, content) {
-		return {content: content, timestamp: timestamp};
+var $author$project$Journally$JournalEntry = F3(
+	function (timestamp, content, isEditable) {
+		return {content: content, isEditable: isEditable, timestamp: timestamp};
 	});
 var $elm$json$Json$Decode$decodeString = _Json_runOnString;
+var $elm$json$Json$Decode$bool = _Json_decodeBool;
 var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $author$project$Journally$entryDecoder = A3(
-	$elm$json$Json$Decode$map2,
+var $elm$json$Json$Decode$map3 = _Json_map3;
+var $author$project$Journally$entryDecoder = A4(
+	$elm$json$Json$Decode$map3,
 	$author$project$Journally$JournalEntry,
 	A2($elm$json$Json$Decode$field, 'timestamp', $elm$json$Json$Decode$int),
-	A2($elm$json$Json$Decode$field, 'content', $elm$json$Json$Decode$string));
+	A2($elm$json$Json$Decode$field, 'content', $elm$json$Json$Decode$string),
+	A2($elm$json$Json$Decode$field, 'isEditable', $elm$json$Json$Decode$bool));
 var $elm$json$Json$Decode$list = _Json_decodeList;
 var $author$project$Journally$listOfEntriesDecoder = $elm$json$Json$Decode$list($author$project$Journally$entryDecoder);
 var $author$project$Journally$decodeFromJson = function (value) {
@@ -5302,6 +5305,7 @@ var $elm$time$Time$posixToMillis = function (_v0) {
 };
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $author$project$Journally$save = _Platform_outgoingPort('save', $elm$json$Json$Encode$string);
+var $elm$json$Json$Encode$bool = _Json_wrap;
 var $elm$json$Json$Encode$int = _Json_wrap;
 var $elm$json$Json$Encode$object = function (pairs) {
 	return _Json_wrap(
@@ -5325,7 +5329,10 @@ var $author$project$Journally$entryJson = function (entry) {
 				$elm$json$Json$Encode$string(entry.content)),
 				_Utils_Tuple2(
 				'timestamp',
-				$elm$json$Json$Encode$int(entry.timestamp))
+				$elm$json$Json$Encode$int(entry.timestamp)),
+				_Utils_Tuple2(
+				'isEditable',
+				$elm$json$Json$Encode$bool(entry.isEditable))
 			]));
 };
 var $elm$json$Json$Encode$list = F2(
@@ -5365,15 +5372,20 @@ var $author$project$Journally$update = F2(
 					A2($elm$core$Task$perform, $author$project$Journally$AddNewEntry, $elm$time$Time$now));
 			case 'AddNewEntry':
 				var time = msg.a;
+				var timestamp = $elm$time$Time$posixToMillis(time);
+				var x = $elm$core$Debug$log(
+					'Timestamp' + $elm$core$String$fromInt(timestamp));
+				var entryToAdd = A3(
+					$author$project$Journally$JournalEntry,
+					$elm$time$Time$posixToMillis(time),
+					'',
+					true);
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
-							activeEntry: $elm$core$Maybe$Just(
-								A2(
-									$author$project$Journally$JournalEntry,
-									$elm$time$Time$posixToMillis(time),
-									''))
+							activeEntry: $elm$core$Maybe$Just(entryToAdd),
+							activeTimestamp: $elm$core$Maybe$Just(timestamp)
 						}),
 					$author$project$Journally$focusActiveEntry);
 			case 'SaveEntry':
@@ -5382,16 +5394,18 @@ var $author$project$Journally$update = F2(
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				} else {
 					var anEntry = _v1.a;
+					var entryToSave = A3($author$project$Journally$JournalEntry, anEntry.timestamp, anEntry.content, false);
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
 								activeEntry: $elm$core$Maybe$Nothing,
-								entries: A2($elm$core$List$cons, anEntry, model.entries)
+								activeTimestamp: $elm$core$Maybe$Nothing,
+								entries: A2($elm$core$List$cons, entryToSave, model.entries)
 							}),
 						$author$project$Journally$save(
 							$author$project$Journally$toString(
-								A2($elm$core$List$cons, anEntry, model.entries))));
+								A2($elm$core$List$cons, entryToSave, model.entries))));
 				}
 			case 'Change':
 				var newContent = msg.a;
@@ -5405,7 +5419,7 @@ var $author$project$Journally$update = F2(
 							model,
 							{
 								activeEntry: $elm$core$Maybe$Just(
-									A2($author$project$Journally$JournalEntry, anEntry.timestamp, newContent))
+									A3($author$project$Journally$JournalEntry, anEntry.timestamp, newContent, anEntry.isEditable))
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
@@ -5430,6 +5444,14 @@ var $author$project$Journally$AddEntry = {$: 'AddEntry'};
 var $author$project$Journally$DoLoad = {$: 'DoLoad'};
 var $elm$html$Html$br = _VirtualDom_node('br');
 var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h1 = _VirtualDom_node('h1');
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
@@ -5461,13 +5483,6 @@ var $elm$html$Html$Attributes$cols = function (n) {
 		'cols',
 		$elm$core$String$fromInt(n));
 };
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
 var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
 var $elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
@@ -5727,7 +5742,10 @@ var $author$project$Journally$viewActiveEntry = function (model) {
 		var anEntry = _v0.a;
 		return A2(
 			$elm$html$Html$div,
-			_List_Nil,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('centered')
+				]),
 			_List_fromArray(
 				[
 					A2(
@@ -5772,38 +5790,107 @@ var $author$project$Journally$viewActiveEntry = function (model) {
 				]));
 	}
 };
-var $author$project$Journally$createEntry = F2(
-	function (timezone, entry) {
+var $author$project$Journally$Edit = function (a) {
+	return {$: 'Edit', a: a};
+};
+var $author$project$Journally$createEntry = F3(
+	function (activeTimestamp, timezone, entry) {
 		var timeString = A2(
 			$author$project$Journally$toDateTimeString,
 			timezone,
 			$elm$time$Time$millisToPosix(entry.timestamp));
-		return A2(
-			$elm$html$Html$div,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$div,
-					_List_Nil,
-					_List_fromArray(
-						[
-							$elm$html$Html$text(timeString)
-						])),
-					A2(
-					$elm$html$Html$div,
-					_List_Nil,
-					_List_fromArray(
-						[
-							$elm$html$Html$text(entry.content)
-						]))
-				]));
+		if (activeTimestamp.$ === 'Nothing') {
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('centered'),
+						$elm$html$Html$Attributes$class('entry')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('timestamp')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(timeString)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('content')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(entry.content)
+							])),
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick(
+								$author$project$Journally$Edit(entry.timestamp))
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Edit')
+							]))
+					]));
+		} else {
+			var aTimestamp = activeTimestamp.a;
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('centered'),
+						$elm$html$Html$Attributes$class('entry')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('timestamp')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(timeString)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('content')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(entry.content)
+							])),
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick(
+								$author$project$Journally$Edit(entry.timestamp))
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Edit')
+							]))
+					]));
+		}
 	});
 var $author$project$Journally$viewEntries = function (model) {
 	var entryDivs = A2(
 		$elm$core$List$map,
 		function (x) {
-			return A2($author$project$Journally$createEntry, model.currentTimeZone, x);
+			return A3($author$project$Journally$createEntry, model.activeTimestamp, model.currentTimeZone, x);
 		},
 		model.entries);
 	return A2($elm$html$Html$div, _List_Nil, entryDivs);
@@ -5819,14 +5906,20 @@ var $author$project$Journally$view = function (model) {
 					[
 						A2(
 						$elm$html$Html$h1,
-						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('title')
+							]),
 						_List_fromArray(
 							[
 								$elm$html$Html$text('Journally')
 							])),
 						A2(
 						$elm$html$Html$div,
-						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('centered')
+							]),
 						_List_fromArray(
 							[
 								A2(
@@ -5843,7 +5936,10 @@ var $author$project$Journally$view = function (model) {
 						A2($elm$html$Html$br, _List_Nil, _List_Nil),
 						A2(
 						$elm$html$Html$div,
-						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('centered')
+							]),
 						_List_fromArray(
 							[
 								A2(

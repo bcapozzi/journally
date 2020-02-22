@@ -1,24 +1,12 @@
 port module Journally exposing (..)
 
--- import Element exposing (..)
--- import Element.Background as Background
--- import Element.Border as Border
--- import Element.Events exposing (..)
--- import Element.Font as Font
--- import Element.Input as Input
---import Html.Styled exposing (..)
---import Html exposing (Attribute, Html, br, button, div, h1, h2, header, input, text, textarea)
---import Html.Attributes exposing (..)
---import Css.Global exposing (..)
---import Html.Attributes exposing (cols, placeholder, rows, value)
-
 import Browser
 import Browser.Dom
 import Debug
 import Html exposing (Html, br, button, div, h1, text, textarea)
-import Html.Attributes exposing (cols, href, id, placeholder, rows, src, value)
+import Html.Attributes exposing (class, cols, href, id, placeholder, rows, src, value)
 import Html.Events exposing (onClick, onInput)
-import Json.Decode as Decode exposing (Decoder, field, int, map2, string)
+import Json.Decode as Decode exposing (Decoder, bool, field, int, map2, map3, string)
 import Json.Encode as Encode
 import Task
 import Time
@@ -42,6 +30,7 @@ subscriptions model =
 type alias JournalEntry =
     { timestamp : Int
     , content : String
+    , isEditable : Bool
     }
 
 
@@ -49,6 +38,7 @@ type alias Model =
     { entries : List JournalEntry
     , activeEntry : Maybe JournalEntry
     , currentTimeZone : Time.Zone
+    , activeTimestamp : Maybe Int
     }
 
 
@@ -61,6 +51,7 @@ type Msg
     | AdjustTimeZone Time.Zone
     | DoLoad
     | Load String
+    | Edit Int
 
 
 port save : String -> Cmd msg
@@ -76,7 +67,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     --init : Model
     --init =
-    ( Model [] Nothing Time.utc, Task.perform AdjustTimeZone Time.here )
+    ( Model [] Nothing Time.utc Nothing, Task.perform AdjustTimeZone Time.here )
 
 
 toSingleString : String -> List String -> String
@@ -97,6 +88,7 @@ entryJson entry =
     Encode.object
         [ ( "content", Encode.string entry.content )
         , ( "timestamp", Encode.int entry.timestamp )
+        , ( "isEditable", Encode.bool entry.isEditable )
         ]
 
 
@@ -155,7 +147,22 @@ update msg model =
             ( model, Task.perform AddNewEntry Time.now )
 
         AddNewEntry time ->
-            ( { model | activeEntry = Just (JournalEntry (Time.posixToMillis time) "") }, focusActiveEntry )
+            let
+                timestamp =
+                    Time.posixToMillis time
+
+                x =
+                    Debug.log ("Timestamp" ++ String.fromInt timestamp)
+
+                entryToAdd =
+                    JournalEntry (Time.posixToMillis time) "" True
+            in
+            ( { model
+                | activeTimestamp = Just timestamp
+                , activeEntry = Just entryToAdd
+              }
+            , focusActiveEntry
+            )
 
         SaveEntry ->
             case model.activeEntry of
@@ -163,11 +170,16 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just anEntry ->
+                    let
+                        entryToSave =
+                            JournalEntry anEntry.timestamp anEntry.content False
+                    in
                     ( { model
-                        | entries = anEntry :: model.entries
+                        | entries = entryToSave :: model.entries
                         , activeEntry = Nothing
+                        , activeTimestamp = Nothing
                       }
-                    , save (toString (anEntry :: model.entries))
+                    , save (toString (entryToSave :: model.entries))
                     )
 
         Change newContent ->
@@ -176,7 +188,7 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just anEntry ->
-                    ( { model | activeEntry = Just (JournalEntry anEntry.timestamp newContent) }, Cmd.none )
+                    ( { model | activeEntry = Just (JournalEntry anEntry.timestamp newContent anEntry.isEditable) }, Cmd.none )
 
         DoLoad ->
             ( model, doload () )
@@ -195,6 +207,20 @@ update msg model =
             ( model, Cmd.none )
 
 
+findEntryWithTimestamp : List JournalEntry -> Int -> Maybe JournalEntry
+findEntryWithTimestamp entries timestampToFind =
+    let
+        results =
+            List.filter (\x -> x.timestamp == timestampToFind) entries
+    in
+    case results of
+        [] ->
+            Nothing
+
+        first :: rest ->
+            Just first
+
+
 listOfEntriesDecoder : Decode.Decoder (List JournalEntry)
 listOfEntriesDecoder =
     Decode.list entryDecoder
@@ -202,9 +228,10 @@ listOfEntriesDecoder =
 
 entryDecoder : Decode.Decoder JournalEntry
 entryDecoder =
-    map2 JournalEntry
+    map3 JournalEntry
         (field "timestamp" int)
         (field "content" string)
+        (field "isEditable" bool)
 
 
 decodeFromJson : String -> List JournalEntry
@@ -222,11 +249,11 @@ view model =
     { title = "Journally"
     , body =
         [ div []
-            [ h1 []
+            [ h1 [ class "title" ]
                 [ text "Journally" ]
-            , div [] [ button [ onClick DoLoad ] [ text "Load" ] ]
+            , div [ class "centered" ] [ button [ onClick DoLoad ] [ text "Load" ] ]
             , br [] []
-            , div []
+            , div [ class "centered" ]
                 [ button [ onClick AddEntry ] [ text "+" ]
                 ]
             , br [] []
@@ -244,7 +271,7 @@ viewActiveEntry model =
             div [] []
 
         Just anEntry ->
-            div []
+            div [ class "centered" ]
                 [ div [] [ text (toDateTimeString model.currentTimeZone (Time.millisToPosix anEntry.timestamp)) ]
                 , textarea [ cols 80, rows 10, placeholder "Enter entry here", value anEntry.content, onInput Change, id "active-entry-field" ] []
                 , div [] [ button [ onClick SaveEntry ] [ text "Save" ] ]
@@ -260,22 +287,39 @@ viewEntries : Model -> Html Msg
 viewEntries model =
     let
         entryDivs =
-            List.map (\x -> createEntry model.currentTimeZone x) model.entries
+            List.map (\x -> createEntry model.activeTimestamp model.currentTimeZone x) model.entries
     in
     div [] entryDivs
 
 
-createEntry timezone entry =
+createEntry : Maybe Int -> Time.Zone -> JournalEntry -> Html Msg
+createEntry activeTimestamp timezone entry =
     let
         timeString =
             toDateTimeString timezone (Time.millisToPosix entry.timestamp)
     in
-    div []
-        [ --[ div [] [ text entry.timeZone ]
-          --, div [] [ text entry.time ]
-          div [] [ text timeString ]
-        , div [] [ text entry.content ]
-        ]
+    case activeTimestamp of
+        Nothing ->
+            div [ class "centered", class "entry" ]
+                [ div [ class "timestamp" ] [ text timeString ]
+                , div [ class "content" ] [ text entry.content ]
+                , button [ onClick (Edit entry.timestamp) ] [ text "Edit" ]
+                ]
+
+        Just aTimestamp ->
+            div [ class "centered", class "entry" ]
+                [ div [ class "timestamp" ] [ text timeString ]
+                , div [ class "content" ] [ text entry.content ]
+                , button [ onClick (Edit entry.timestamp) ] [ text "Edit" ]
+                ]
+
+
+
+--            div [ class "centered", class "entry" ]
+--                [ div [ class "timestamp" ] [ text timeString ]
+--                , div [ class "content" ] [ text entry.content ]
+--                , button [ onClick (Edit entry.timestamp) ] [ text "Edit" ]
+--                ]
 
 
 toDateTimeString timeZone time =

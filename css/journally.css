@@ -1,0 +1,35 @@
+.title {
+  font-size: 32px;
+  text-align: center;
+  color: black;
+  font-weight: bold;
+}
+
+.centered {
+  text-align: center;
+}
+
+.entry {
+  padding-bottom: 16px;
+}
+
+.timestamp {
+  font-size: 16px;
+  font-weight: bold;
+/*  font: 12px arial, sans-serif; */
+  color: black;
+}
+
+.content {
+  font-size: 16px;
+/*  font: 14px arial, sans-serif; */
+/*  font-family: serif;*/
+}
+
+.entry-left {
+  float: left;
+}
+
+.entry-right {
+  float: left;
+}
