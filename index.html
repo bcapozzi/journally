@@ -1,0 +1,23 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Main</title>
+  <link rel="stylesheet" href="journally.css">
+  <script src="js/elm.js"></script>
+</head>
+<body>
+  <script type="text/javascript">
+    var storageKey = "token";
+    var app = Elm.Journally.init();
+    app.ports.save.subscribe(function(value) {
+      console.log("JS PORT RECEIVED VALUE TO SAVE: ", value);
+      localStorage.setItem(storageKey, value);
+    });
+    app.ports.doload.subscribe(function() {
+      console.log("JS PORT RECEIVED DO LOAD REQUEST ...");
+      app.ports.load.send(localStorage.getItem(storageKey));
+    });
+  </script>
+</body>
+</html>
