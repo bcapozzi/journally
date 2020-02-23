@@ -203,8 +203,30 @@ update msg model =
             in
             ( { model | entries = entries }, Cmd.none )
 
+        Edit timestamp ->
+            let
+                entry =
+                    List.filter (\x -> x.timestamp == timestamp) model.entries
+            in
+            case entry of
+                [] ->
+                    ( model, Cmd.none )
+
+                first :: rest ->
+                    ( { model
+                        | activeEntry = Just (JournalEntry first.timestamp first.content first.isEditable)
+                        , entries = removeEntry timestamp model.entries
+                      }
+                    , Cmd.none
+                    )
+
         _ ->
             ( model, Cmd.none )
+
+
+removeEntry : Int -> List JournalEntry -> List JournalEntry
+removeEntry timestamp entries =
+    List.filter (\x -> not (x.timestamp == timestamp)) entries
 
 
 findEntryWithTimestamp : List JournalEntry -> Int -> Maybe JournalEntry

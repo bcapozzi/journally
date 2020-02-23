@@ -5259,6 +5259,17 @@ var $author$project$Journally$doload = _Platform_outgoingPort(
 	function ($) {
 		return $elm$json$Json$Encode$null;
 	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
 var $author$project$Journally$DoNothing = {$: 'DoNothing'};
 var $elm$core$Basics$composeL = F3(
 	function (g, f, x) {
@@ -5303,6 +5314,16 @@ var $elm$time$Time$posixToMillis = function (_v0) {
 	var millis = _v0.a;
 	return millis;
 };
+var $elm$core$Basics$not = _Basics_not;
+var $author$project$Journally$removeEntry = F2(
+	function (timestamp, entries) {
+		return A2(
+			$elm$core$List$filter,
+			function (x) {
+				return !_Utils_eq(x.timestamp, timestamp);
+			},
+			entries);
+	});
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $author$project$Journally$save = _Platform_outgoingPort('save', $elm$json$Json$Encode$string);
 var $elm$json$Json$Encode$bool = _Json_wrap;
@@ -5436,6 +5457,29 @@ var $author$project$Journally$update = F2(
 						model,
 						{entries: entries}),
 					$elm$core$Platform$Cmd$none);
+			case 'Edit':
+				var timestamp = msg.a;
+				var entry = A2(
+					$elm$core$List$filter,
+					function (x) {
+						return _Utils_eq(x.timestamp, timestamp);
+					},
+					model.entries);
+				if (!entry.b) {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				} else {
+					var first = entry.a;
+					var rest = entry.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								activeEntry: $elm$core$Maybe$Just(
+									A3($author$project$Journally$JournalEntry, first.timestamp, first.content, first.isEditable)),
+								entries: A2($author$project$Journally$removeEntry, timestamp, model.entries)
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
 			default:
 				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 		}
